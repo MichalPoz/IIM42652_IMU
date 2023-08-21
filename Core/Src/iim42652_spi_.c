@@ -28,6 +28,7 @@ void iim_imu_init(SPI_HandleTypeDef *spi_handler)
 	iim_imu_s.acc_fs = SET_ACCEL_FS_SEL_16g;
 	iim_imu_s.acc_odr = SET_ACCEL_ODR_1kHz;
 	HAL_GPIO_WritePin(GPIOC, CHIP_SELECT_Pin, GPIO_PIN_SET);
+
 }
 
 void activate_imu()
@@ -40,54 +41,66 @@ void deactivate_imu()
 	HAL_GPIO_WritePin(GPIOC, CHIP_SELECT_Pin, GPIO_PIN_SET);
 }
 
-void who_test()
+void who_test(uint8_t *dev_id)
 {
-	uint8_t addr = WHO_AM_I;
-	uint8_t reg = 0x80 | addr;
-	uint8_t dev_id = 0;
-	activate_imu();
-	HAL_SPI_Transmit(iim_imu_s.spi_h, &reg, 1, 100);
-	while(HAL_SPI_GetState(iim_imu_s.spi_h) != HAL_SPI_STATE_READY);
-	HAL_SPI_Receive(iim_imu_s.spi_h, &dev_id, 1, 100);
-	deactivate_imu();
-	HAL_Delay(100);
+	uint8_t reg = WHO_AM_I;
+	read_register(&reg, dev_id);
 }
 
-void soft_reset()
+void read_register(uint8_t *reg, uint8_t *data_out)
 {
-	uint8_t addr = 0x80 | DEVICE_CONFIG;
-	uint8_t tmp = 0;
+	uint8_t addr = 0x80 | *reg;
 	activate_imu();
 	HAL_SPI_Transmit(iim_imu_s.spi_h, &addr, 1, 100);
-	HAL_SPI_Receive(iim_imu_s.spi_h, &tmp, 1, 100);
+	while(HAL_SPI_GetState(iim_imu_s.spi_h) != HAL_SPI_STATE_READY);
+	HAL_SPI_Receive(iim_imu_s.spi_h, data_out, 1, 100);
 	deactivate_imu();
 	HAL_Delay(10);
 }
 
-void read_register()
+void write_register(uint8_t *reg, uint8_t *data_in)
 {
-	uint8_t reg = 0x80 | PWR_MGMT0;
-	uint8_t spi_buf = 0;
+	uint8_t addr = 0x00 | *reg;
 	activate_imu();
-	HAL_SPI_Transmit(iim_imu_s.spi_h, &reg, 1, 100);
+	HAL_SPI_Transmit(iim_imu_s.spi_h, &addr, 1, 100);
 	while(HAL_SPI_GetState(iim_imu_s.spi_h) != HAL_SPI_STATE_READY);
-	HAL_SPI_Receive(iim_imu_s.spi_h, &spi_buf, 1, 100);
-	deactivate_imu();
-	HAL_Delay(10);
-}
-
-void write_register()
-{
-	uint8_t reg = 0x00 | PWR_MGMT0;
-	uint8_t spi_buf = 0x2f;
-	activate_imu();
-	HAL_SPI_Transmit(iim_imu_s.spi_h, &reg, 1, 100);
-	while(HAL_SPI_GetState(iim_imu_s.spi_h) != HAL_SPI_STATE_READY);
-	HAL_SPI_Transmit(iim_imu_s.spi_h, &spi_buf, 1, 100);
+	HAL_SPI_Transmit(iim_imu_s.spi_h, data_in, 1, 100);
 	deactivate_imu();
 	HAL_Delay(100);
 }
 
+void set_power_config(uint8_t *value)
+{
+	uint8_t reg = PWR_MGMT0;
+	write_register(&reg, value);
+}
+
+void set_gyro_config_0(uint8_t *value)
+{
+	uint8_t reg = GYRO_CONFIG0;
+	write_register(&reg, value);
+}
+
+void set_accel_config_0(uint8_t *value)
+{
+	uint8_t reg = ACCEL_CONFIG0;
+	write_register(&reg, value);
+}
+
+void read_temperature()
+{
+
+}
+
+void read_acc_data()
+{
+
+}
+
+void read_gyro_data()
+{
+
+}
 //void config_setup()
 
 

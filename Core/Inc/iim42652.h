@@ -17,6 +17,15 @@
 #include "main.h"
 #include "spi.h"
 
+/* Configuration options */
+#define TEMP_DIS 	0x20
+#define IDLE 		0x10
+#define GYRO_STB	0x04
+#define GYRO_LN		0x0c
+#define ACC_LP		0x02
+#define ACC_LN		0x03
+#define PWR_DEFAULT 0x00
+
 
 typedef struct iim_imu_s
 {
@@ -48,14 +57,17 @@ typedef struct iim_imu_gyro_cfg
 
 } iim_imu_gyro_cfg_t;
 
-
-
-void who_test();
+void who_test(uint8_t *dev_id);
 void activate_imu();
 void deactivate_imu();
 void iim_imu_init(SPI_HandleTypeDef *spi_handler);
-void soft_reset();
-void read_register();
-void write_register();
+void read_register(uint8_t *reg, uint8_t *data_out);
+void write_register(uint8_t *reg, uint8_t *data_in);
+void set_power_config(uint8_t *value);
+void set_gyro_config_0(uint8_t *value);
+void set_accel_config_0(uint8_t *value);
+void read_temperature();
+void read_acc_data();
+void read_gyro_data();
 
 #endif
