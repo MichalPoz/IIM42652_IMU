@@ -28,7 +28,6 @@ void iim_imu_init(SPI_HandleTypeDef *spi_handler)
 	iim_imu_s.acc_fs = SET_ACCEL_FS_SEL_16g;
 	iim_imu_s.acc_odr = SET_ACCEL_ODR_1kHz;
 	HAL_GPIO_WritePin(GPIOC, CHIP_SELECT_Pin, GPIO_PIN_SET);
-
 }
 
 void activate_imu()
@@ -87,9 +86,25 @@ void set_accel_config_0(uint8_t *value)
 	write_register(&reg, value);
 }
 
-void read_temperature()
+void read_temperature(float *temperature)
 {
+	uint8_t reg = TEMP_DATA1_UI;
+	int16_t tmp;
+	uint8_t rx_buff[2];
 
+	uint8_t addr = 0x80 | reg;
+	activate_imu();
+	HAL_SPI_Transmit(iim_imu_s.spi_h, &addr, 1, 100);
+	while(HAL_SPI_GetState(iim_imu_s.spi_h) != HAL_SPI_STATE_READY);
+	HAL_SPI_Receive(iim_imu_s.spi_h, rx_buff, 2, 100);
+	deactivate_imu();
+
+	tmp = rx_buff[0];
+	tmp <<= 8;
+	tmp |= rx_buff[1];
+	*temperature = (float)tmp;
+	*temperature /= 132.48;
+	*temperature += 25;
 }
 
 void read_acc_data()

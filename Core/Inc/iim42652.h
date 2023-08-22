@@ -66,7 +66,7 @@ void write_register(uint8_t *reg, uint8_t *data_in);
 void set_power_config(uint8_t *value);
 void set_gyro_config_0(uint8_t *value);
 void set_accel_config_0(uint8_t *value);
-void read_temperature();
+void read_temperature(float *temperature);
 void read_acc_data();
 void read_gyro_data();
 
