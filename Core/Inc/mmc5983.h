@@ -13,15 +13,23 @@
 #include "main.h"
 #include "spi.h"
 
-typedef struct mmc_mag_s
+typedef struct MMC_MagStructure
 {
-	I2C_HandleTypeDef *i2c_h;
+	I2C_HandleTypeDef *I2C_Handle;
+	uint32_t xRaw;
+	uint32_t yRaw;
+	uint32_t zRaw;
+	float xScaled;
+	float yScaled;
+	float zScaled;
 
 } mmc_mag_t;
 
-void mmc_init(I2C_HandleTypeDef *i2c_handler);
-void mmc_write_register(uint8_t *reg, uint8_t *data_out);
-void mmc_status(uint8_t *status);
-void mmc_product_id(uint8_t *status);
+void MMC_Init(I2C_HandleTypeDef *I2C_Handle);
+void MMC_WriteRegister(uint8_t *reg, uint8_t *data_out);
+void MMC_Status(uint8_t *status);
+void MMC_ProductID(uint8_t *status);
+void MMC_GetTemperature(float *data_buf);
+void MMC_GetXYZ();
 
 #endif /* INC_MMC5983_H_ */
