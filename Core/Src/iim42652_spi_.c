@@ -18,7 +18,7 @@
 #include "stdio.h"
 
 iim_imu_t iim_imu_s;
-
+IIM_IMU_DataRaw_t accelRaw;
 
 void iim_imu_init(SPI_HandleTypeDef *spi_handler)
 {
@@ -30,92 +30,126 @@ void iim_imu_init(SPI_HandleTypeDef *spi_handler)
 	HAL_GPIO_WritePin(GPIOC, CHIP_SELECT_Pin, GPIO_PIN_SET);
 }
 
-void activate_imu()
+void iim_activate_imu()
 {
 	HAL_GPIO_WritePin(GPIOC, CHIP_SELECT_Pin, GPIO_PIN_RESET);
 }
 
-void deactivate_imu()
+void iim_deactivate_imu()
 {
 	HAL_GPIO_WritePin(GPIOC, CHIP_SELECT_Pin, GPIO_PIN_SET);
 }
 
-void who_test(uint8_t *dev_id)
+void iim_who_test(uint8_t *dev_id)
 {
 	uint8_t reg = WHO_AM_I;
-	read_register(&reg, dev_id);
+	iim_read_register(&reg, dev_id);
 }
 
-void read_register(uint8_t *reg, uint8_t *data_out)
+void iim_read_register(uint8_t *reg, uint8_t *data_out)
 {
 	uint8_t addr = 0x80 | *reg;
-	activate_imu();
+	iim_activate_imu();
 	HAL_SPI_Transmit(iim_imu_s.spi_h, &addr, 1, 100);
-	while(HAL_SPI_GetState(iim_imu_s.spi_h) != HAL_SPI_STATE_READY);
-	HAL_SPI_Receive(iim_imu_s.spi_h, data_out, 1, 100);
-	deactivate_imu();
+	HAL_SPI_TransmitReceive(iim_imu_s.spi_h, &addr, data_out, 1, 100);
+	iim_deactivate_imu();
 	HAL_Delay(10);
 }
 
-void write_register(uint8_t *reg, uint8_t *data_in)
+void iim_write_register(uint8_t *reg, uint8_t *data_in)
 {
 	uint8_t addr = 0x00 | *reg;
-	activate_imu();
-	HAL_SPI_Transmit(iim_imu_s.spi_h, &addr, 1, 100);
-	while(HAL_SPI_GetState(iim_imu_s.spi_h) != HAL_SPI_STATE_READY);
-	HAL_SPI_Transmit(iim_imu_s.spi_h, data_in, 1, 100);
-	deactivate_imu();
-	HAL_Delay(100);
+	uint8_t data_out[2] = {addr, *data_in};
+	iim_activate_imu();
+	HAL_SPI_Transmit(iim_imu_s.spi_h, data_out, 2, 1000);
+	iim_deactivate_imu();
 }
 
-void set_power_config(uint8_t *value)
+void iim_set_power_config(uint8_t *value)
 {
 	uint8_t reg = PWR_MGMT0;
-	write_register(&reg, value);
+	iim_write_register(&reg, value);
 }
 
 void set_gyro_config_0(uint8_t *value)
 {
 	uint8_t reg = GYRO_CONFIG0;
-	write_register(&reg, value);
+	iim_write_register(&reg, value);
 }
 
-void set_accel_config_0(uint8_t *value)
+void iim_set_accel_config_0(uint8_t *value)
 {
 	uint8_t reg = ACCEL_CONFIG0;
-	write_register(&reg, value);
+	iim_write_register(&reg, value);
 }
 
-void read_temperature(float *temperature)
+void iim_read_temperature(float *temperature)
 {
-	uint8_t reg = TEMP_DATA1_UI;
-	int16_t tmp;
 	uint8_t rx_buff[2];
+	int16_t tmp;
 
-	uint8_t addr = 0x80 | reg;
-	activate_imu();
-	HAL_SPI_Transmit(iim_imu_s.spi_h, &addr, 1, 100);
-	while(HAL_SPI_GetState(iim_imu_s.spi_h) != HAL_SPI_STATE_READY);
-	HAL_SPI_Receive(iim_imu_s.spi_h, rx_buff, 2, 100);
-	deactivate_imu();
+	uint8_t addr = (0x80 | TEMP_DATA1_UI);
+	iim_activate_imu();
+	HAL_SPI_Transmit(iim_imu_s.spi_h, &addr, 1, 1000);
+	HAL_SPI_Receive(iim_imu_s.spi_h, rx_buff, 2, 1000);
 
 	tmp = rx_buff[0];
 	tmp <<= 8;
 	tmp |= rx_buff[1];
-	*temperature = (float)tmp;
-	*temperature /= 132.48;
-	*temperature += 25;
+
+	iim_deactivate_imu();
+	*temperature = ((float)tmp / 132.28) + 25;
+
 }
 
-void read_acc_data()
+void iim_read_acc_data()
+{
+	uint8_t rx_buff[6];
+	uint16_t tmp;
+
+	uint8_t addr = 0x80 | ACCEL_DATA_X1_UI;
+	iim_activate_imu();
+	HAL_SPI_Transmit(iim_imu_s.spi_h, &addr, 1, 1000);
+	HAL_SPI_Receive(iim_imu_s.spi_h, rx_buff, 6, 1000);
+
+    tmp = rx_buff[0];
+    tmp <<= 8;
+    tmp |= rx_buff[1];
+
+    accelRaw.x = (int16_t)tmp;
+
+    tmp = rx_buff[2];
+    tmp <<= 8;
+    tmp |= rx_buff[3];
+
+    accelRaw.y = (int16_t)tmp;
+
+    tmp = rx_buff[4];
+    tmp <<= 8;
+    tmp |= rx_buff[5];
+
+    accelRaw.z = (int16_t)tmp;
+}
+
+void iim_read_gyro_data()
 {
 
 }
-
-void read_gyro_data()
+/*
+void iim_convert_accel(iim_scaled_data *output, iim_raw_data input)
 {
-
+    output->x = ((float)input.x * 16.0) / 32768.0;
+    output->y = ((float)input.y * 16.0) / 32768.0;
+    output->z = ((float)input.z * 16.0) / 32768.0;
 }
+
+void iim_convert_gyro(iim_scaled_data *output, iim_raw_data input)
+{
+    output->x = ((float)input.x * 2000.0) / 32768.0;
+    output->y = ((float)input.y * 2000.0) / 32768.0;
+    output->z = ((float)input.z * 2000.0) / 32768.0;
+}
+*/
 //void config_setup()
 
 
@@ -130,17 +164,6 @@ void IIM_init_SPI(SPI_HandleTypeDef *spi_handler)
     HAL_GPIO_WritePin(GPIOC, Chip_select_Pin, GPIO_PIN_SET);	// CS pin should be default high
 }
 
-void IIM_readTemperature_SPI(float *temperature)
-{
-    uint8_t tmp[2];
-    uint8_t reg_adr = 0x80 | TEMP_DATA1_UI;
-    activate_imu();
-    HAL_SPI_TransmitReceive(status.spi_h, &reg_adr, tmp, 2, 100);
-    deactivate_imu();
-    int16_t temp_int = (tmp[0] << 8) | tmp[1];
-    *temperature = (float)temp_int;
-    *temperature = ((*temperature) / 132.48) + 25.0;
-}
 
 void IIM_readAccel_SPI(iim_raw_data *data)
 {
