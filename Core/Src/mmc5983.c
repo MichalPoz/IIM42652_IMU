@@ -14,13 +14,20 @@
 /* */
 
 
-/* TESTED FUNCTIONS */
+/*************************************************************
+ * NOT TESTED FUNCTIONS
+ *************************************************************/
 
-void MMC_WriteRegister(mmc_mag_t *magStructure, uint8_t reg, uint8_t *dataToSend)
+void MMC_WriteRegister(mmc_mag_t *magStructure, uint8_t reg, uint8_t *dataToSend, unsigned char writeFlag)
 {
-	uint16_t dataSize = sizeof(*dataToSend);
-	HAL_I2C_Mem_Write(magStructure->I2C_Handle, MMC_I2C_ADR_WR, reg, 1, dataToSend, dataSize, 100);
 	MMC_SetShadowRegisterState(magStructure, reg, dataToSend);
+
+	if (writeFlag)
+	{
+		uint16_t dataSize = sizeof(*dataToSend);
+		HAL_I2C_Mem_Write(magStructure->I2C_Handle, MMC_I2C_ADR_WR, reg, 1, dataToSend, dataSize, 100);
+	}
+
 }
 
 void MMC_ReadRegister(mmc_mag_t *magStructure, uint8_t reg, uint8_t *readBuffer)
@@ -31,31 +38,28 @@ void MMC_ReadRegister(mmc_mag_t *magStructure, uint8_t reg, uint8_t *readBuffer)
 
 void MMC_SetShadowRegisterState(mmc_mag_t *magStructure, uint8_t reg, uint8_t *regVal)
 {
+	// DODANIE FUNKCJI OBSLUGI BLEDOW - zapisanie juz zapisanej wartosci
 	switch(reg)
 	{
 	case INT_CTRL_0_REG:
 	{
 		magStructure->registerState->internalControl0 = *regVal;
-	}
-	break;
+	} break;
 
 	case INT_CTRL_1_REG:
 	{
 		magStructure->registerState->internalControl1 = *regVal;
-	}
-	break;
+	} break;
 
 	case INT_CTRL_2_REG:
 	{
 		magStructure->registerState->internalControl2 = *regVal;
-	}
-	break;
+	} break;
 
 	case INT_CTRL_3_REG:
 	{
 		magStructure->registerState->internalControl3 = *regVal;
-	}
-	break;
+	} break;
 
 	default:
 		break;
@@ -75,8 +79,9 @@ void MMC_ProductID(mmc_mag_t *magStructure, uint8_t *prodID)
 void MMC_GetTemperature(mmc_mag_t *magStructure, float *dataBuf)
 {
 	// Initialize new measurement
-	uint8_t regVal = TM_T;
-	MMC_WriteRegister(magStructure, INT_CTRL_0_REG, &regVal);
+	//uint8_t regVal = TM_T;
+	//MMC_WriteRegister(magStructure, INT_CTRL_0_REG, &regVal);
+	MMC_SetBit(magStructure, INT_CTRL_0_REG, TM_T, 1);
 
 	// Check if measurement is done
 	uint8_t statusVal = 0;
@@ -89,8 +94,9 @@ void MMC_GetTemperature(mmc_mag_t *magStructure, float *dataBuf)
 	while(statusVal != condi);
 
 	// Clearing Shadow Memory TM_T - manually
-	regVal &= ~TM_T;
-	MMC_SetShadowRegisterState(magStructure, INT_CTRL_0_REG, &regVal);
+	//regVal &= ~TM_T;
+	//MMC_SetShadowRegisterState(magStructure, INT_CTRL_0_REG, &regVal);
+	MMC_ClearBit(magStructure, INT_CTRL_0_REG, TM_T, 0);
 
 	// Reading measurement
 	uint8_t tempBuf = 0;
@@ -103,8 +109,8 @@ void MMC_GetTemperature(mmc_mag_t *magStructure, float *dataBuf)
 void MMC_GetXYZ(mmc_mag_t *magStructure)
 {
 	// Initialize new XYZ measurement
-	uint8_t regVal = TM_M;
-	MMC_WriteRegister(magStructure, INT_CTRL_0_REG, &regVal);
+	MMC_SetBit(magStructure, INT_CTRL_0_REG, TM_M, 1);
+	//MMC_WriteRegister(magStructure, INT_CTRL_0_REG, &regVal);
 
 	// Check if measurement is done
 	uint8_t statusVal = 0;
@@ -117,8 +123,9 @@ void MMC_GetXYZ(mmc_mag_t *magStructure)
 	while(statusVal != condi);
 
 	// Clearing Shadow Memory TM_M - manually
-	regVal &= ~TM_M;
-	MMC_SetShadowRegisterState(magStructure, INT_CTRL_0_REG, &regVal);
+	//regVal &= ~TM_M;
+	//MMC_SetShadowRegisterState(magStructure, INT_CTRL_0_REG, &regVal);
+	MMC_ClearBit(magStructure, INT_CTRL_0_REG, TM_M, 0);
 
 	// Reading measurement
 	uint8_t tempBuf[7] = {0};
@@ -149,178 +156,6 @@ void MMC_MagFieldConvert(mmc_mag_t *magStructure)
 	magStructure->xScaled = (((float)magStructure->xRaw - (float)magStructure->xOffset) / 131072.0) * 8;
 	magStructure->yScaled = (((float)magStructure->yRaw - (float)magStructure->yOffset) / 131072.0) * 8;
 	magStructure->zScaled = (((float)magStructure->zRaw - (float)magStructure->zOffset) / 131072.0) * 8;
-}
-
-/* NOT TESTED FUNCTIONS */
-
-uint8_t MMC_CheckShadowRegisterState(mmc_mag_t *magStructure, uint8_t reg)
-{
-	uint8_t shadowRegister = NULL;
-
-	switch(reg)
-	{
-	case INT_CTRL_0_REG:
-	{
-		shadowRegister = magStructure->registerState->internalControl0;
-	}
-	break;
-
-	case INT_CTRL_1_REG:
-	{
-		shadowRegister = magStructure->registerState->internalControl1;
-	}
-	break;
-
-	case INT_CTRL_2_REG:
-	{
-
-		shadowRegister = magStructure->registerState->internalControl2;
-	}
-	break;
-
-	case INT_CTRL_3_REG:
-	{
-
-		shadowRegister = magStructure->registerState->internalControl3;
-	}
-	break;
-
-	default:
-		break;
-	}
-
-	return shadowRegister;
-}
-
-
-void MMC_Init(mmc_mag_t *magStructure, mmc_memory_t *magRegisterState, I2C_HandleTypeDef *I2C_Handle)
-{
-	magStructure->I2C_Handle = I2C_Handle;
-	magStructure->registerState = magRegisterState;
-
-
-	// Zainicjowanie zmiennych
-	magStructure->xOffset = 131072;
-	magStructure->yOffset = 131072;
-	magStructure->zOffset = 131072;
-
-	// Wybor configu itd itp
-	// Sprawdzenie polaczenia - odczyt ID
-
-}
-
-void MMC_SetConfig()
-{
-
-}
-
-void MMC_DoSoftReset(mmc_mag_t *magStructure)
-{
-	uint8_t regVal = SW_RST;
-	MMC_WriteRegister(magStructure, INT_CTRL_1_REG, &regVal);
-	HAL_Delay(50);
-}
-
-void MMC_EnableInterrput(mmc_mag_t *magStructure)
-{
-	uint8_t regVal = INT_M_DONE;
-	MMC_WriteRegister(magStructure, INT_CTRL_0_REG, &regVal);
-}
-
-void MMC_DisableInterrupt(mmc_mag_t *magStructure)
-{
-	uint8_t regVal = MMC_CheckShadowRegisterState(magStructure, INT_CTRL_0_REG);
-	if (regVal == INT_M_DONE)
-	{
-		regVal &= ~INT_M_DONE;
-		MMC_WriteRegister(magStructure, INT_CTRL_0_REG, &regVal);
-	}
-	else
-	{
-		//ERROR HANDLING
-	}
-}
-
-void MMC_EnableAutoSetReset(mmc_mag_t *magStructure)
-{
-	uint8_t regVal = AUTO_SR_EN;
-	MMC_WriteRegister(magStructure, INT_CTRL_0_REG, &regVal);
-}
-
-void MMC_DisableAutoSetReset(mmc_mag_t *magStructure)
-{
-	uint8_t regVal = MMC_CheckShadowRegisterState(magStructure, INT_CTRL_0_REG);
-	if (regVal == AUTO_SR_EN)
-	{
-		regVal &= ~AUTO_SR_EN;
-		MMC_WriteRegister(magStructure, INT_CTRL_0_REG, &regVal);
-	}
-	else
-	{
-		//ERROR HANDLING
-	}
-}
-
-void MMC_EnableXChannel(mmc_mag_t *magStructure)
-{
-	uint8_t regVal = MMC_CheckShadowRegisterState(magStructure, INT_CTRL_1_REG);
-	if (regVal == X_DISABLE)
-	{
-		regVal &= ~X_DISABLE;
-		MMC_WriteRegister(magStructure, INT_CTRL_1_REG, &regVal);
-	}
-	else
-	{
-		//ERROR HANDLING
-	}
-}
-
-void MMC_DisableXChannel(mmc_mag_t *magStructure)
-{
-	uint8_t regVal = X_DISABLE;
-	MMC_WriteRegister(magStructure, INT_CTRL_1_REG, &regVal);
-}
-
-void MMC_EnableYZChannel(mmc_mag_t *magStructure)
-{
-	uint8_t regVal = MMC_CheckShadowRegisterState(magStructure, INT_CTRL_1_REG);
-	if (regVal == Y_Z_DISABLE)
-	{
-		regVal &= ~Y_Z_DISABLE;
-		MMC_WriteRegister(magStructure, INT_CTRL_1_REG, &regVal);
-	}
-	else
-	{
-		//ERROR HANDLING
-	}
-}
-
-void MMC_DisableYZChannel(mmc_mag_t *magStructure)
-{
-	uint8_t regVal = Y_Z_DISABLE;
-	MMC_WriteRegister(magStructure, INT_CTRL_1_REG, &regVal);
-}
-
-void MMC_SetOperation(mmc_mag_t *magStructure)
-{
-	uint8_t regVal = SET_ON;
-	MMC_WriteRegister(magStructure, INT_CTRL_0_REG, &regVal);
-
-	// Clearing register state value - manually
-	regVal &= ~SET_ON;
-	MMC_SetShadowRegisterState(magStructure, INT_CTRL_0_REG, &regVal);
-	HAL_Delay(1);
-}
-
-void MMC_ResetOperation(mmc_mag_t *magStructure)
-{
-	uint8_t regVal = RESET_ON;
-	MMC_WriteRegister(magStructure, INT_CTRL_0_REG, &regVal);
-
-	// Clearing register state value - manually
-	regVal &= ~RESET_ON;
-	MMC_SetShadowRegisterState(magStructure, INT_CTRL_0_REG, &regVal);
-	HAL_Delay(1);
 }
 
 void MMC_RemoveBridgeOffset(mmc_mag_t *magStructure)
@@ -355,99 +190,516 @@ void MMC_RemoveBridgeOffset(mmc_mag_t *magStructure)
 	magStructure->zOffset = (setOutZ + resetOutZ) / 2;
 }
 
-void MMC_SetBandwidth(mmc_mag_t *magStructure, uint8_t bandwidth)
+void MMC_SetOperation(mmc_mag_t *magStructure)
 {
+	//uint8_t regVal = SET_ON;
+	//MMC_WriteRegister(magStructure, INT_CTRL_0_REG, &regVal);
+	MMC_SetBit(magStructure, INT_CTRL_0_REG, SET_ON, 1);
+
+	// Clearing register state value in shadow memory only
+	//regVal &= ~SET_ON;
+	MMC_ClearBit(magStructure, INT_CTRL_0_REG, SET_ON, 0);
+	//MMC_SetShadowRegisterState(magStructure, INT_CTRL_0_REG, &regVal);
+	HAL_Delay(1);
+}
+
+void MMC_ResetOperation(mmc_mag_t *magStructure)
+{
+	//uint8_t regVal = RESET_ON;
+	//MMC_WriteRegister(magStructure, INT_CTRL_0_REG, &regVal);
+	MMC_SetBit(magStructure, INT_CTRL_0_REG, RESET_ON, 1);
+
+	// Clearing register state value in shadow memory only
+	//regVal &= ~RESET_ON;
+	//MMC_SetShadowRegisterState(magStructure, INT_CTRL_0_REG, &regVal);
+	MMC_ClearBit(magStructure, INT_CTRL_0_REG, SET_ON, 0);
+	HAL_Delay(1);
+}
+
+void MMC_SetBit(mmc_mag_t *magStructure, uint8_t internalReg, uint8_t regVal, unsigned char writeFlag)
+{
+	uint8_t internalRegState = MMC_CheckShadowRegisterState(magStructure, internalReg);
+	uint8_t newInternalRegState = internalRegState | regVal;
+	MMC_WriteRegister(magStructure, internalReg, &newInternalRegState, writeFlag);
+}
+
+void MMC_ClearBit(mmc_mag_t *magStructure, uint8_t internalReg, uint8_t regVal, unsigned char writeFlag)
+{
+	uint8_t internalRegState = MMC_CheckShadowRegisterState(magStructure, internalReg);
+	uint8_t newInternalRegState = internalRegState & (~regVal);
+	MMC_WriteRegister(magStructure, internalReg, &newInternalRegState, writeFlag);
+}
+
+uint8_t MMC_CheckShadowRegisterState(mmc_mag_t *magStructure, uint8_t internalReg) // Checked, not tested
+{
+	uint8_t shadowRegister = 0x0;
+
+	switch(internalReg)
+	{
+	case INT_CTRL_0_REG:
+	{
+		shadowRegister = magStructure->registerState->internalControl0;
+	} break;
+
+	case INT_CTRL_1_REG:
+	{
+		shadowRegister = magStructure->registerState->internalControl1;
+	} break;
+
+	case INT_CTRL_2_REG:
+	{
+
+		shadowRegister = magStructure->registerState->internalControl2;
+	} break;
+
+	case INT_CTRL_3_REG:
+	{
+
+		shadowRegister = magStructure->registerState->internalControl3;
+	} break;
+
+	default:
+		break;
+	}
+
+	return shadowRegister;
+}
+
+
+void MMC_Init(mmc_mag_t *magStructure, mmc_memory_t *magRegisterState, mmc_error_t *magErrorState, mmc_config_t *magConfigState, I2C_HandleTypeDef *I2C_Handle)
+{
+	magStructure->I2C_Handle = I2C_Handle;
+	magStructure->registerState = magRegisterState;
+	magStructure->errorState = magErrorState;
+
+	// Default Register States
+	magStructure->registerState->internalControl0 = 0x0;
+	magStructure->registerState->internalControl1 = 0x0;
+	magStructure->registerState->internalControl2 = 0x0;
+	magStructure->registerState->internalControl3 = 0x0;
+
+	// Zainicjowanie zmiennych
+	magStructure->xOffset = 131072;
+	magStructure->yOffset = 131072;
+	magStructure->zOffset = 131072;
+
+	// Default Configuration
+	magStructure->configState->bandwidthFreq = 100;
+	magStructure->configState->continuousFreq = 0;
+	magStructure->configState->setPeriod = 1;
+
+}
+
+void MMC_SetConfig(mmc_mag_t *magStructure)
+{
+	// Default configuration
+	uint16_t bandwidthFrequency = 100;
+	uint16_t continuousFrequency = 0;
+	uint16_t setPeriod = 100;
+
+	MMC_SetBandwidth(magStructure, bandwidthFrequency);
+	MMC_SetContinuousFreq(magStructure, continuousFrequency);
+	MMC_SetSetOperationPeriod(magStructure, setPeriod);
+}
+
+void MMC_DoSoftReset(mmc_mag_t *magStructure) // Checked, not tested
+{
+	MMC_SetBit(magStructure, INT_CTRL_1_REG, SW_RST, 1);
+	HAL_Delay(50);
+}
+
+void MMC_EnableInterrput(mmc_mag_t *magStructure) // Checked, not tested
+{
+	MMC_SetBit(magStructure, INT_CTRL_0_REG, INT_M_DONE, 1);
+}
+
+void MMC_DisableInterrupt(mmc_mag_t *magStructure)
+{
+	uint8_t regVal = MMC_CheckShadowRegisterState(magStructure, INT_CTRL_0_REG);
+	uint8_t compareVal = regVal & INT_M_DONE;
+	if (compareVal == INT_M_DONE)
+	{
+		MMC_ClearBit(magStructure, INT_CTRL_0_REG, INT_M_DONE, 1);
+	}
+	else
+	{
+		//ERROR HANDLING -
+	}
+}
+
+void MMC_EnableAutoSetReset(mmc_mag_t *magStructure)
+{
+	MMC_SetBit(magStructure, INT_CTRL_0_REG, AUTO_SR_EN, 1);
+}
+
+void MMC_DisableAutoSetReset(mmc_mag_t *magStructure)
+{
+	uint8_t regVal = MMC_CheckShadowRegisterState(magStructure, INT_CTRL_0_REG);
+	uint8_t compareVal = regVal & AUTO_SR_EN;
+	if (compareVal == AUTO_SR_EN)
+	{
+		MMC_ClearBit(magStructure, INT_CTRL_0_REG, AUTO_SR_EN, 1);
+	}
+	else
+	{
+		//ERROR HANDLING
+	}
+}
+
+void MMC_EnableXChannel(mmc_mag_t *magStructure)
+{
+	uint8_t regVal = MMC_CheckShadowRegisterState(magStructure, INT_CTRL_1_REG);
+	uint8_t compareVal = regVal & X_DISABLE;
+	if (compareVal == X_DISABLE)
+	{
+		MMC_ClearBit(magStructure, INT_CTRL_1_REG, X_DISABLE, 1);
+	}
+	else
+	{
+		//ERROR HANDLING
+	}
+}
+
+void MMC_DisableXChannel(mmc_mag_t *magStructure)
+{
+	MMC_SetBit(magStructure, INT_CTRL_1_REG, X_DISABLE, 1);
+}
+
+void MMC_EnableYZChannel(mmc_mag_t *magStructure)
+{
+	uint8_t regVal = MMC_CheckShadowRegisterState(magStructure, INT_CTRL_1_REG);
+	uint8_t compareVal = regVal & Y_Z_DISABLE;
+	if (compareVal == Y_Z_DISABLE)
+	{
+		MMC_ClearBit(magStructure, INT_CTRL_1_REG, Y_Z_DISABLE, 1);
+	}
+	else
+	{
+		//ERROR HANDLING
+	}
+}
+
+void MMC_DisableYZChannel(mmc_mag_t *magStructure)
+{
+	MMC_SetBit(magStructure, INT_CTRL_1_REG, Y_Z_DISABLE, 1);
+}
+
+void MMC_SetBandwidth(mmc_mag_t *magStructure, uint16_t bandwidth)
+{
+	//Dzialanie funkcji jest niezalezne od innych rejestrow stad mozna spokojnie ustawic wybrana wartosc
 	switch(bandwidth)
 	{
 	case 800:
 	{
-		MMC_WriteRegister(magStructure, INT_CTRL_1_REG, MEAS_05ms_BW_800);
-	}
-	break;
+		MMC_ClearBit(magStructure, INT_CTRL_1_REG, BW_1, 0);
+		MMC_ClearBit(magStructure, INT_CTRL_1_REG, BW_0, 1);
+		magStructure->configState->bandwidthFreq = bandwidth;
+	} break;
 
 	case 400:
 	{
-		MMC_WriteRegister(magStructure, INT_CTRL_1_REG, MEAS_2ms_BW_400);
-	}
-	break;
+		MMC_ClearBit(magStructure, INT_CTRL_1_REG, BW_1, 0);
+		MMC_SetBit(magStructure, INT_CTRL_1_REG, BW_0, 1);
+		magStructure->configState->bandwidthFreq = bandwidth;
+	} break;
 
 	case 200:
 	{
-		MMC_WriteRegister(magStructure, INT_CTRL_1_REG, MEAS_4ms_BW_200);
-	}
-	break;
+		MMC_SetBit(magStructure, INT_CTRL_1_REG, BW_1, 0);
+		MMC_ClearBit(magStructure, INT_CTRL_1_REG, BW_0, 1);
+		magStructure->configState->bandwidthFreq = bandwidth;
+	} break;
 
 	case 100:
 	{
-		MMC_WriteRegister(magStructure, INT_CTRL_1_REG, MEAS_8ms_BW_100);
-	}
-	break;
+		MMC_SetBit(magStructure, INT_CTRL_1_REG, BW_1, 0);
+		MMC_SetBit(magStructure, INT_CTRL_1_REG, BW_0, 1);
+		magStructure->configState->bandwidthFreq = bandwidth;
+	} break;
 
 	default:
 	{
-		// Add default action
-	}
-	break;
-	}
+		// Add default action - information about wrong bandwidth - error message
+	} break;
 
+	}
 }
 
-void MMC_SetContinuousFreq(mmc_mag_t *magStructure, uint8_t frequency)
+uint16_t MMC_GetBandwidth(mmc_mag_t *magStructure)
+{
+	return magStructure->configState->bandwidthFreq;
+}
+
+void MMC_EnableContinuousMode(mmc_mag_t *magStructure)
+{
+	uint8_t stateVal = MMC_CheckShadowRegisterState(magStructure, INT_CTRL_2_REG);
+	uint8_t compareVal = stateVal >> 5;
+	if (compareVal != 0b00000000)
+	{
+		MMC_SetBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_ON, 1);
+	}
+	else
+	{
+		//ERROR HANDLING
+	}
+}
+
+void MMC_DisableContinuousMode(mmc_mag_t *magStructure)
+{
+	uint8_t stateVal = MMC_CheckShadowRegisterState(magStructure, INT_CTRL_2_REG);
+	uint8_t compareVal = stateVal & CONTINUOUS_ON;
+	if (compareVal != 0b00000000)
+	{
+		MMC_ClearBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_ON, 1);
+	}
+	else
+	{
+		//ERROR HANDLING
+	}
+}
+
+void MMC_SetContinuousFreq(mmc_mag_t *magStructure, uint16_t frequency)
 {
 	switch(frequency)
 	{
-	case 0:
-	{
-
-	}
-	break;
-
 	case 1:
 	{
-
-	}
-	break;
+		// 001 State
+		MMC_ClearBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_2, 0);
+		MMC_ClearBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_1, 0);
+		MMC_SetBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_0, 1);
+		magStructure->configState->continuousFreq = frequency;
+	} break;
 
 	case 10:
 	{
-
-	}
-	break;
+		// 010 State
+		MMC_ClearBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_2, 0);
+		MMC_SetBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_1, 0);
+		MMC_ClearBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_0, 1);
+		magStructure->configState->continuousFreq = frequency;
+	} break;
 
 	case 20:
 	{
-
-	}
-	break;
+		// 011 State
+		MMC_ClearBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_2, 0);
+		MMC_SetBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_1, 0);
+		MMC_SetBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_0, 1);
+		magStructure->configState->continuousFreq = frequency;
+	} break;
 
 	case 50:
 	{
-
-	}
-	break;
+		// 100 State
+		MMC_SetBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_2, 0);
+		MMC_ClearBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_1, 0);
+		MMC_ClearBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_0, 1);
+		magStructure->configState->continuousFreq = frequency;
+	} break;
 
 	case 100:
 	{
-
-	}
-	break;
+		// 101 State
+		MMC_SetBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_2, 0);
+		MMC_ClearBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_1, 0);
+		MMC_SetBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_0, 1);
+		magStructure->configState->continuousFreq = frequency;
+	} break;
 
 	case 200:
 	{
+		if (MMC_GetBandwidth(magStructure) == 200)
+		{
+			// 110
+			MMC_SetBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_2, 0);
+			MMC_SetBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_1, 0);
+			MMC_ClearBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_0, 1);
+			magStructure->configState->continuousFreq = frequency;
+		}
+		else
+		{
+			//ERROR HANDLING - WRONG BANDWIDTH VALUE FOR THIS CONFIGURATION
+		}
 
-	}
-	break;
+	} break;
 
 	case 1000:
 	{
+		if (MMC_GetBandwidth(magStructure) == 1000)
+		{
+			// 111
+			MMC_SetBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_2, 0);
+			MMC_SetBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_1, 0);
+			MMC_SetBit(magStructure, INT_CTRL_2_REG, CONTINUOUS_0, 1);
+			magStructure->configState->continuousFreq = frequency;
+		}
+		else
+		{
+			//ERROR HANDLING - WRONG BANDWIDTH VALUE FOR THIS CONFIGURATION
+		}
+
+	} break;
+
+	default:
+	{
+		break;//Zwrocenie infomracji o zlej wartosc
+	}
 
 	}
-	break;
+}
+
+uint16_t MMC_GetContinuousFreq(mmc_mag_t *magStructure)
+{
+	return magStructure->configState->continuousFreq;
+}
+
+void MMC_EnablePeriodicSet(mmc_mag_t *magStructure)
+{
+
+	uint8_t stateVal_1 = MMC_CheckShadowRegisterState(magStructure, INT_CTRL_0_REG);
+	uint8_t stateVal_2 = MMC_CheckShadowRegisterState(magStructure, INT_CTRL_2_REG);
+	uint8_t compareVal = (stateVal_1 | stateVal_2);	// temporary value
+	if (compareVal == 0b00101000)
+	{
+		MMC_SetBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_ON, 1);
+	}
+	else
+	{
+		//Periodic Set Error Identifier
+	}
+
+}
+
+void MMC_DisablePeriodicSet(mmc_mag_t *magStructure)
+{
+	MMC_ClearBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_ON, 1);
+}
+
+void MMC_SetSetOperationPeriod(mmc_mag_t *magStructure, uint16_t setPeriod)
+{
+	// sprawdzenie czy periodic set jest ustawione
+	uint8_t stateVal = MMC_CheckShadowRegisterState(magStructure, INT_CTRL_2_REG);
+	uint8_t compareVal = (stateVal & PERIOD_SET_ON);
+	if (compareVal == PERIOD_SET_ON)
+	{
+		switch(setPeriod)
+		{
+			case 1:
+			{
+				// 000
+				MMC_ClearBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_2, 0);
+				MMC_ClearBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_1, 0);
+				MMC_ClearBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_0, 1);
+				magStructure->configState->setPeriod = setPeriod;
+			} break;
+
+			case 25:
+			{
+				// 001
+				MMC_ClearBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_2, 0);
+				MMC_ClearBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_1, 0);
+				MMC_SetBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_0, 1);
+				magStructure->configState->setPeriod = setPeriod;
+			} break;
+
+			case 75:
+			{
+				// 010
+				MMC_ClearBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_2, 0);
+				MMC_SetBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_1, 0);
+				MMC_ClearBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_0, 1);
+				magStructure->configState->setPeriod = setPeriod;
+			} break;
+
+			case 100:
+			{
+				// 011
+				MMC_ClearBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_2, 0);
+				MMC_SetBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_1, 0);
+				MMC_SetBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_0, 1);
+				magStructure->configState->setPeriod = setPeriod;
+			} break;
+
+			case 250:
+			{
+				// 100
+				MMC_SetBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_2, 0);
+				MMC_ClearBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_1, 0);
+				MMC_ClearBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_0, 1);
+				magStructure->configState->setPeriod = setPeriod;
+			} break;
+
+			case 500:
+			{
+				// 101
+				MMC_SetBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_2, 0);
+				MMC_ClearBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_1, 0);
+				MMC_SetBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_0, 1);
+				magStructure->configState->setPeriod = setPeriod;
+			} break;
+
+			case 1000:
+			{
+				// 110
+				MMC_SetBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_2, 0);
+				MMC_SetBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_1, 0);
+				MMC_ClearBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_0, 1);
+				magStructure->configState->setPeriod = setPeriod;
+			} break;
+
+			case 2000:
+			{
+				// 111
+				MMC_SetBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_2, 0);
+				MMC_SetBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_1, 0);
+				MMC_SetBit(magStructure, INT_CTRL_2_REG, PERIOD_SET_0, 1);
+				magStructure->configState->setPeriod = setPeriod;
+			} break;
+
+			default:
+			{
+				//ERROR
+			} break;
+		}
+	}
+	else
+	{
+		//ERROR HANDLING - trzeba ustawic enable period set
 	}
 }
-/* TO DO
- * - Setting Periodic Set Operation
- * - Setting Continuous Mode Frequency
- * - Struct or sturct members to store config states
- * - Interrupt handling
- */
+
+uint16_t MMC_GetSetOperationPeriod(mmc_mag_t *magStructure)
+{
+	return magStructure->configState->setPeriod;
+}
+
+void MMC_ApplyExtraCurrentPosToNeg(mmc_mag_t *magStructure)
+{
+	MMC_SetBit(magStructure, INT_CTRL_3_REG, ST_ENP, 1);
+}
+
+void MMC_RemoveExtraCurrentPosToNeg(mmc_mag_t *magStructure)
+{
+	MMC_ClearBit(magStructure, INT_CTRL_3_REG, ST_ENP, 1);
+}
+
+void MMC_ApplyExtraCurrentNegToPos(mmc_mag_t *magStructure)
+{
+	MMC_SetBit(magStructure, INT_CTRL_3_REG, ST_ENM, 1);
+}
+
+void MMC_RemoveExtraCurrentNegToPos(mmc_mag_t *magStructure)
+{
+	MMC_ClearBit(magStructure, INT_CTRL_3_REG, ST_ENM, 1);
+}
+
+void MMC_Enable3WireSPI(mmc_mag_t *magStructure)
+{
+	MMC_SetBit(magStructure, INT_CTRL_3_REG, SPI_3_WIRE, 1);
+}
+
+void MMC_Disable3WireSPI(mmc_mag_t *magStructure)
+{
+	MMC_ClearBit(magStructure, INT_CTRL_3_REG, SPI_3_WIRE, 1);
+}
