@@ -58,10 +58,6 @@ typedef struct MMC_MagStructure
 
 
 /* TESTED FUNCTIONS */
-
-/* NOT TESTED FUNCTIONS */
-
-
 void MMC_Init(mmc_mag_t *magStructure, mmc_memory_t *magRegisterState, mmc_error_t *magErrorState, mmc_config_t *magConfigState, I2C_HandleTypeDef *I2C_Handle);
 
 void MMC_WriteRegister(mmc_mag_t *magStructure, uint8_t reg, uint8_t *dataToSend, unsigned char writeFlag);
@@ -77,6 +73,10 @@ void MMC_Status(mmc_mag_t *magStructure, uint8_t *status);
 void MMC_ProductID(mmc_mag_t *magStructure, uint8_t *prodID);
 
 void MMC_GetTemperature(mmc_mag_t *magStructure, float *dataBuf);
+
+/* NOT TESTED FUNCTIONS */
+
+void MMC_SetConfig(mmc_mag_t *magStructure, uint16_t bandwidthFrequency, uint16_t continuousFrequency, uint16_t setPeriod);
 
 void MMC_GetXYZ(mmc_mag_t *magStructure);
 
@@ -101,6 +101,14 @@ uint16_t MMC_GetBandwidth(mmc_mag_t *magStrucuture);
 void MMC_SetContinuousFreq(mmc_mag_t *magStructure, uint16_t frequency);
 
 uint16_t MMC_GetContinuousFreq(mmc_mag_t *magStructure);
+
+void MMC_DisableXChannel(mmc_mag_t *magStructure);
+
+void MMC_EnableXChannel(mmc_mag_t *magStructure);
+
+void MMC_DisableYZChannel(mmc_mag_t *magStructure);
+
+void MMC_EnableYZChannel(mmc_mag_t *magStructure);
 
 void MMC_ApplyExtraCurrentPosToNeg(mmc_mag_t *magStructure);
 
