@@ -26,61 +26,46 @@
 #define ACC_LN		0b00000011
 #define PWR_DEFAULT 0b00000000
 
-
-typedef struct iim_imu_s
+typedef struct IIM_ConfigState
 {
 	SPI_HandleTypeDef *spi_h;
-    uint8_t gyro_fs;
-    uint8_t gyro_odr;
-    uint8_t acc_fs;
-    uint8_t acc_odr;
-
-} iim_imu_t;
-
-typedef struct IIM_IMU_AccelConfig
-{
 	uint8_t accel_fs_sel;
 	uint8_t accel_odr;
 	uint8_t accel_ui_filt_bw;
 	uint8_t accel_ui_filt_ord;
 	uint8_t accel_dec2_m2_ord;
-
-} IIM_IMU_AccelConfig_t;
-
-typedef struct IIM_IMU_GyroConfig
-{
 	uint8_t gyro_fs_sel;
 	uint8_t gyro_odr;
 	uint8_t gyro_ui_filt_bw;
 	uint8_t gyro_ui_filt_ord;
 	uint8_t gyro_dec2_m2_ord;
 
-} IIM_IMU_GyroConfig_t;
+} iim_config_t;
 
-typedef struct IIM_IMU_DataRaw
+typedef struct IIM_ImuStructure
 {
-	int16_t x;
-	int16_t y;
-	int16_t z;
+	iim_config_t *configState;
+} iim_imu_t;
 
-} IIM_IMU_DataRaw_t;
 
-typedef struct IIM_IMU_DataScaled
-{
+void IIM_IMU_Init(iim_imu_t *imuStructure, iim_config_t *imuConfigState, SPI_HandleTypeDef *spi_handler);
 
-};
+void IIM_IMU_Activate();
 
-void iim_who_test(uint8_t *dev_id);
-void iim_activate_imu();
-void iim_deactivate_imu();
-void iim_imu_init(SPI_HandleTypeDef *spi_handler);
-void iim_read_register(uint8_t *reg, uint8_t *data_out);
-void iim_write_register(uint8_t *reg, uint8_t *data_in);
-void iim_set_power_config(uint8_t *value);
-void iim_set_gyro_config_0(uint8_t *value);
-void iim_set_accel_config_0(uint8_t *value);
-void iim_read_temperature(float *temperature);
-void iim_read_acc_data();
-void iim_read_gyro_data();
+void IIM_IMU_Deactivate();
+
+void IIM_IMU_WhoTest(iim_imu_t *imuStructure, uint8_t *dev_id);
+
+void IIM_IMU_ReadRegister(iim_imu_t *imuStructure, uint8_t reg, uint8_t bytes,  uint8_t *data_out);
+
+void IIM_IMU_WriteRegister(iim_imu_t *imuStructure, uint8_t reg, uint8_t *data_in);
+
+void IIM_IMU_SetPowerConfig(iim_imu_t *imuStructure, uint8_t *value);
+
+void IIM_IMU_SetGyroConfig(iim_imu_t *imuStructure, uint8_t *value);
+
+void IIM_IMU_SetAccelConfig(iim_imu_t *imuStructure, uint8_t *value);
+
+void IIM_IMU_ReadTemperature(iim_imu_t *imuStructure, float *temperature);
 
 #endif

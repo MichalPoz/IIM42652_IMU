@@ -14,7 +14,7 @@
 
 /*Device address*/
 
-#define IIM_ADR 0x68 << 1
+#define IIM_I2C_ADR 0x68 << 1
 
 /*Registers addresses*/
 

@@ -17,100 +17,98 @@
 #include "stm32f4xx_hal.h"
 #include "stdio.h"
 
-iim_imu_t iim_imu_s;
-IIM_IMU_DataRaw_t accelRaw;
-
-void iim_imu_init(SPI_HandleTypeDef *spi_handler)
+void IIM_IMU_Init(iim_imu_t *imuStructure, iim_config_t *imuConfigState, SPI_HandleTypeDef *spi_handler)
 {
-	iim_imu_s.spi_h = spi_handler;
-	iim_imu_s.gyro_fs = SET_GYRO_FS_SEL_2000_dps;
-	iim_imu_s.gyro_odr = SET_GYRO_ODR_1kHz;
-	iim_imu_s.acc_fs = SET_ACCEL_FS_SEL_16g;
-	iim_imu_s.acc_odr = SET_ACCEL_ODR_1kHz;
+	imuStructure->configState = imuConfigState;
+
+	imuStructure->configState->spi_h = spi_handler;
 	HAL_GPIO_WritePin(GPIOC, CHIP_SELECT_Pin, GPIO_PIN_SET);
+
+	uint8_t regValue = 0b00000001;
+	IIM_IMU_WriteRegister(imuStructure, DEVICE_CONFIG, &regValue);
+	HAL_Delay(1000);
 }
 
-void iim_activate_imu()
+void IIM_IMU_Activate()
 {
 	HAL_GPIO_WritePin(GPIOC, CHIP_SELECT_Pin, GPIO_PIN_RESET);
 }
 
-void iim_deactivate_imu()
+void IIM_IMU_Deactivate()
 {
 	HAL_GPIO_WritePin(GPIOC, CHIP_SELECT_Pin, GPIO_PIN_SET);
 }
 
-void iim_who_test(uint8_t *dev_id)
+void IIM_IMU_WhoTest(iim_imu_t *imuStructure, uint8_t *dev_id)
 {
-	uint8_t reg = WHO_AM_I;
-	iim_read_register(&reg, dev_id);
+	IIM_IMU_ReadRegister(imuStructure, WHO_AM_I, 1, dev_id);
 }
 
-void iim_read_register(uint8_t *reg, uint8_t *data_out)
+void IIM_IMU_ReadRegister(iim_imu_t *imuStructure, uint8_t reg, uint8_t bytes,  uint8_t *data_out)
 {
-	uint8_t addr = 0x80 | *reg;
-	iim_activate_imu();
-	HAL_SPI_Transmit(iim_imu_s.spi_h, &addr, 1, 100);
-	HAL_SPI_TransmitReceive(iim_imu_s.spi_h, &addr, data_out, 1, 100);
-	iim_deactivate_imu();
+	uint8_t addr = 0x80 | reg;
+	static uint8_t rxData[2] = {0};
+	//uint8_t txData[2] = {addr, 0};
+	IIM_IMU_Activate();
+	HAL_SPI_Transmit(imuStructure->configState->spi_h, &addr, 1, 100);
+	HAL_SPI_Receive(imuStructure->configState->spi_h, data_out, bytes, 100);
+	//HAL_SPI_TransmitReceive(imuStructure->configState->spi_h, txData, rxData, 2, 100);
+	IIM_IMU_Deactivate();
 	HAL_Delay(10);
+	data_out = rxData;
 }
 
-void iim_write_register(uint8_t *reg, uint8_t *data_in)
+void IIM_IMU_WriteRegister(iim_imu_t *imuStructure, uint8_t reg, uint8_t *data_in)
 {
-	uint8_t addr = 0x00 | *reg;
+	uint8_t addr = 0x00 | reg;
 	uint8_t data_out[2] = {addr, *data_in};
-	iim_activate_imu();
-	HAL_SPI_Transmit(iim_imu_s.spi_h, data_out, 2, 1000);
-	iim_deactivate_imu();
+	IIM_IMU_Activate();
+	HAL_SPI_Transmit(imuStructure->configState->spi_h, data_out, 2, 1000);
+	IIM_IMU_Deactivate();
 }
 
-void iim_set_power_config(uint8_t *value)
+void IIM_IMU_SetPowerConfig(iim_imu_t *imuStructure, uint8_t *value)
 {
-	uint8_t reg = PWR_MGMT0;
-	iim_write_register(&reg, value);
+	IIM_IMU_WriteRegister(imuStructure, PWR_MGMT0, value);
 }
 
-void set_gyro_config_0(uint8_t *value)
+void IIM_IMU_SetGyroConfig(iim_imu_t *imuStructure, uint8_t *value)
 {
-	uint8_t reg = GYRO_CONFIG0;
-	iim_write_register(&reg, value);
+	IIM_IMU_WriteRegister(imuStructure, GYRO_CONFIG0, value);
 }
 
-void iim_set_accel_config_0(uint8_t *value)
+void IIM_IMU_SetAccelConfig(iim_imu_t *imuStructure, uint8_t *value)
 {
-	uint8_t reg = ACCEL_CONFIG0;
-	iim_write_register(&reg, value);
+	IIM_IMU_WriteRegister(imuStructure, ACCEL_CONFIG0, value);
 }
 
-void iim_read_temperature(float *temperature)
+void IIM_IMU_ReadTemperature(iim_imu_t *imuStructure, float *temperature)
 {
-	uint8_t rx_buff[2];
+	//uint8_t addr1 = 0x80 | TEMP_DATA1_UI;
+	//uint8_t addr2 = 0x80 | TEMP_DATA0_UI;
+	uint8_t rx_buff[2] = {0};
 	int16_t tmp;
 
-	uint8_t addr = (0x80 | TEMP_DATA1_UI);
-	iim_activate_imu();
-	HAL_SPI_Transmit(iim_imu_s.spi_h, &addr, 1, 1000);
-	HAL_SPI_Receive(iim_imu_s.spi_h, rx_buff, 2, 1000);
+	IIM_IMU_ReadRegister(imuStructure, TEMP_DATA1_UI, 2, rx_buff);
+	//IIM_IMU_ReadRegister(imuStructure, TEMP_DATA0_UI, 1, &rx_buff[1]);
 
 	tmp = rx_buff[0];
 	tmp <<= 8;
 	tmp |= rx_buff[1];
 
-	iim_deactivate_imu();
 	*temperature = ((float)tmp / 132.28) + 25;
 
 }
-
-void iim_read_acc_data()
+/*
+void IIM_ReadAccData()
 {
 	uint8_t rx_buff[6];
 	uint16_t tmp;
 
 	uint8_t addr = 0x80 | ACCEL_DATA_X1_UI;
-	iim_activate_imu();
-	HAL_SPI_Transmit(iim_imu_s.spi_h, &addr, 1, 1000);
-	HAL_SPI_Receive(iim_imu_s.spi_h, rx_buff, 6, 1000);
+	IIM_IMU_Activate();
+	HAL_SPI_Transmit(imuStructure->configState->spi_h, &addr, 1, 1000);
+	HAL_SPI_Receive(imuStructure->configState->spi_h, rx_buff, 6, 1000);
 
     tmp = rx_buff[0];
     tmp <<= 8;
@@ -130,11 +128,8 @@ void iim_read_acc_data()
 
     accelRaw.z = (int16_t)tmp;
 }
+*/
 
-void iim_read_gyro_data()
-{
-
-}
 /*
 void iim_convert_accel(iim_scaled_data *output, iim_raw_data input)
 {
