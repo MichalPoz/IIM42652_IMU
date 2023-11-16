@@ -18,7 +18,7 @@
 #include "spi.h"
 
 /* Configuration options */
-#define TEMP_DIS 	0x00100000
+#define TEMP_DISABLE 	0b00100000
 #define IDLE 		0b00010000
 #define GYRO_STB	0b00000100
 #define GYRO_LN		0b00001100
@@ -56,15 +56,19 @@ void IIM_IMU_Deactivate();
 
 void IIM_IMU_WhoTest(iim_imu_t *imuStructure, uint8_t *dev_id);
 
-void IIM_IMU_ReadRegister(iim_imu_t *imuStructure, uint8_t reg, uint8_t bytes,  uint8_t *data_out);
+void IIM_IMU_ReadRegister(iim_imu_t *imuStructure, uint8_t reg, uint8_t bytes, uint8_t *data_out);
 
-void IIM_IMU_WriteRegister(iim_imu_t *imuStructure, uint8_t reg, uint8_t *data_in);
+void IIM_IMU_WriteRegister(iim_imu_t *imuStructure, uint8_t reg, uint8_t data_in);
 
-void IIM_IMU_SetPowerConfig(iim_imu_t *imuStructure, uint8_t *value);
+void IIM_IMU_EnableTemperature(iim_imu_t *imuStructure);
 
-void IIM_IMU_SetGyroConfig(iim_imu_t *imuStructure, uint8_t *value);
+void IIM_IMU_DisableTemperature(iim_imu_t *imuStructure);
 
-void IIM_IMU_SetAccelConfig(iim_imu_t *imuStructure, uint8_t *value);
+void IIM_IMU_SetPowerConfig(iim_imu_t *imuStructure, uint8_t value);
+
+void IIM_IMU_SetGyroConfig(iim_imu_t *imuStructure, uint8_t value);
+
+void IIM_IMU_SetAccelConfig(iim_imu_t *imuStructure, uint8_t value);
 
 void IIM_IMU_ReadTemperature(iim_imu_t *imuStructure, float *temperature);
 
