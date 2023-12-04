@@ -1,11 +1,5 @@
 /**
- * @file iim42652.h
- * @author Michał Słomiany (m.slomiany@outlook.com) 
  * @brief
- * @version 0.1
- * @date 2023-01-26
- *
- * @copyright Copyright (c) 2023
  *
  */
 
@@ -26,7 +20,13 @@
 #define ACC_LN		0b00000011
 #define PWR_DEFAULT 0b00000000
 
-typedef struct IIM_ConfigState
+typedef enum {
+	LP,
+	LN,
+	STB
+} iim_imu_sensor_mode_t;
+
+typedef struct iim_config_s
 {
 	SPI_HandleTypeDef *spi_h;
 	uint8_t accel_fs_sel;
@@ -39,37 +39,46 @@ typedef struct IIM_ConfigState
 	uint8_t gyro_ui_filt_bw;
 	uint8_t gyro_ui_filt_ord;
 	uint8_t gyro_dec2_m2_ord;
+	iim_imu_sensor_mode_t *sensor_mode;
 
-} iim_config_t;
+} iim_imu_config_t;
 
-typedef struct IIM_ImuStructure
+typedef struct iim_imu_s
 {
-	iim_config_t *configState;
+	iim_imu_config_t *config_state;
 } iim_imu_t;
 
 
-void IIM_IMU_Init(iim_imu_t *imuStructure, iim_config_t *imuConfigState, SPI_HandleTypeDef *spi_handler);
+void iim_imu_init(iim_imu_t *imu_s, iim_imu_config_t *imu_config_s, SPI_HandleTypeDef *spi_handler);
 
-void IIM_IMU_Activate();
+void iim_imu_activate();
 
-void IIM_IMU_Deactivate();
+void iim_imu_deactivate();
 
-void IIM_IMU_WhoTest(iim_imu_t *imuStructure, uint8_t *dev_id);
+void iim_imu_who_test(iim_imu_t *imu_s, uint8_t *dev_id);
 
-void IIM_IMU_ReadRegister(iim_imu_t *imuStructure, uint8_t reg, uint8_t bytes, uint8_t *data_out);
+void iim_imu_read_register(iim_imu_t *imu_s, uint8_t reg, uint8_t bytes, uint8_t *data_out);
 
-void IIM_IMU_WriteRegister(iim_imu_t *imuStructure, uint8_t reg, uint8_t data_in);
+void iim_imu_write_register(iim_imu_t *imu_s, uint8_t reg, uint8_t data_in);
 
-void IIM_IMU_EnableTemperature(iim_imu_t *imuStructure);
+void iim_imu_enable_temperature(iim_imu_t *imu_s);
 
-void IIM_IMU_DisableTemperature(iim_imu_t *imuStructure);
+void iim_imu_disable_temperature(iim_imu_t *imu_s);
 
-void IIM_IMU_SetPowerConfig(iim_imu_t *imuStructure, uint8_t value);
+void iim_imu_enable_accelerometer(iim_imu_t *imu_s, char accMode[]);
 
-void IIM_IMU_SetGyroConfig(iim_imu_t *imuStructure, uint8_t value);
+void iim_imu_disable_accelerometer(iim_imu_t *imu_s);
 
-void IIM_IMU_SetAccelConfig(iim_imu_t *imuStructure, uint8_t value);
+void iim_imu_enable_gyroscope(iim_imu_t *imu_s, char gyroMode);
 
-void IIM_IMU_ReadTemperature(iim_imu_t *imuStructure, float *temperature);
+void iim_imu_disable_gyroscope(iim_imu_t *imu_s);
+
+void iim_imu_set_power_config(iim_imu_t *imu_s, uint8_t value);
+
+void iim_imu_set_gyro_config(iim_imu_t *imu_s, uint8_t value);
+
+void iim_imu_set_accel_config(iim_imu_t *imu_s, uint8_t value);
+
+void iim_imu_read_temperature(iim_imu_t *imu_s, float *temperature);
 
 #endif
