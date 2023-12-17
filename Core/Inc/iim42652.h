@@ -21,9 +21,9 @@
 #define PWR_DEFAULT 0b00000000
 
 typedef enum {
-	LP,
-	LN,
-	STB
+	LP,	// only for accel
+	LN,	// for accel and gyro
+	STB // only for gyroscope
 } iim_imu_sensor_mode_t;
 
 typedef struct iim_config_s
@@ -40,16 +40,35 @@ typedef struct iim_config_s
 	uint8_t gyro_ui_filt_ord;
 	uint8_t gyro_dec2_m2_ord;
 	iim_imu_sensor_mode_t *sensor_mode;
-
 } iim_imu_config_t;
+
+typedef struct iim_imu_data_raw_s
+{
+	int16_t x_axis;
+	int16_t y_axis;
+	int16_t z_axis;
+} iim_data_raw_t;
+
+typedef struct iim_imu_data_s
+{
+	float x_axis;
+	float y_axis;
+	float z_axis;
+} iim_data_t;
 
 typedef struct iim_imu_s
 {
 	iim_imu_config_t *config_state;
+	iim_imu_sensor_mode_t *accel_mode;
+	iim_imu_sensor_mode_t *gyro_mode;
+	iim_data_raw_t *accel_raw;
+	iim_data_raw_t *gyro_raw;
+	iim_data_t *accel_data;
+	iim_data_t *gyro_data;
 } iim_imu_t;
 
 
-void iim_imu_init(iim_imu_t *imu_s, iim_imu_config_t *imu_config_s, SPI_HandleTypeDef *spi_handler);
+void iim_imu_init(iim_imu_t *imu_s, SPI_HandleTypeDef *spi_handler);
 
 void iim_imu_activate();
 
@@ -65,11 +84,11 @@ void iim_imu_enable_temperature(iim_imu_t *imu_s);
 
 void iim_imu_disable_temperature(iim_imu_t *imu_s);
 
-void iim_imu_enable_accelerometer(iim_imu_t *imu_s, char accMode[]);
+void iim_imu_enable_accelerometer(iim_imu_t *imu_s);
 
 void iim_imu_disable_accelerometer(iim_imu_t *imu_s);
 
-void iim_imu_enable_gyroscope(iim_imu_t *imu_s, char gyroMode);
+void iim_imu_enable_gyroscope(iim_imu_t *imu_s);
 
 void iim_imu_disable_gyroscope(iim_imu_t *imu_s);
 
@@ -80,5 +99,13 @@ void iim_imu_set_gyro_config(iim_imu_t *imu_s, uint8_t value);
 void iim_imu_set_accel_config(iim_imu_t *imu_s, uint8_t value);
 
 void iim_imu_read_temperature(iim_imu_t *imu_s, float *temperature);
+
+void iim_imu_read_acceleration(iim_imu_t *imu_s);
+
+void iim_imu_read_gyro(iim_imu_t *imu_s);
+
+void iim_imu_convert_acceleration(iim_imu_t *imu_s);
+
+void iim_imu_convert_gyro(iim_imu_t *imu_s);
 
 #endif

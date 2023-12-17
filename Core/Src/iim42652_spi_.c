@@ -19,20 +19,38 @@
 
 #define BITVALUE(X, N) ( ( (X) >> (N) ) & 0x1 )
 
-void iim_imu_init(iim_imu_t *imu_s, iim_imu_config_t *imu_config_s, SPI_HandleTypeDef *spi_handler)
+void iim_imu_init(iim_imu_t *imu_s, SPI_HandleTypeDef *spi_handler)
 {
-	imu_s->config_state = imu_config_s;
+	// Creating secondary structures - need to check
+	static iim_imu_config_t imu_config_s;
+	static iim_imu_sensor_mode_t accel_sensor_mode;
+	static iim_imu_sensor_mode_t gyro_sensor_mode;
+	static iim_data_raw_t accel_raw;
+	static iim_data_raw_t gyro_raw;
+	static iim_data_t	accel_data;
+	static iim_data_t gyro_data;
 
+	// Assigning addresses of SPI handler and structures
+	imu_s->config_state = &imu_config_s;
 	imu_s->config_state->spi_h = spi_handler;
-	HAL_GPIO_WritePin(GPIOC, CHIP_SELECT_Pin, GPIO_PIN_SET);
+	imu_s->accel_mode = &accel_sensor_mode;
+	imu_s->gyro_mode = &gyro_sensor_mode;
+	imu_s->accel_raw = &accel_raw;
+	imu_s->gyro_raw = &gyro_raw;
+	imu_s->accel_data = &accel_data;
+	imu_s->gyro_data = &gyro_data;
 
-	uint8_t reg_value = 0b00000001;
-	iim_imu_write_register(imu_s, DEVICE_CONFIG, reg_value);
-	HAL_Delay(1000);
+	// Defining sensor modes
+	accel_sensor_mode = LN;
+	gyro_sensor_mode = LN;
 
-	uint8_t test_val = 0b00000010;
-	uint8_t condi = BITVALUE(test_val, 1);
-	HAL_Delay(100);
+	// Defining configurations of sensors
+
+	// Connection test - checking SPI connection establishment
+
+	// Turning on sensors and setting configuration
+	iim_imu_enable_accelerometer(imu_s);
+	iim_imu_enable_gyroscope(imu_s);
 }
 
 void iim_imu_activate()
@@ -93,21 +111,21 @@ void iim_imu_disable_temperature(iim_imu_t *imu_s)
 	}
 }
 
-void iim_imu_enable_accelerometer(iim_imu_t *imu_s, char accMode[])
+void iim_imu_enable_accelerometer(iim_imu_t *imu_s)
 {
 	uint8_t pwr_state;
 	iim_imu_read_register(imu_s, PWR_MGMT0, 1, &pwr_state);
 	if ( !BITVALUE(pwr_state, 0) && !BITVALUE(pwr_state, 1) )
 	{
-		switch(accMode[])
+		switch(*(imu_s->accel_mode))
 		{
-			case 'LP':
+			case LP:	//LP
 			{
 				pwr_state |= ACC_LP;
 				iim_imu_write_register(imu_s, PWR_MGMT0, pwr_state);
 			} break;
 
-			case 'LN':
+			case LN:	//LN
 			{
 				pwr_state |= ACC_LN;
 				iim_imu_write_register(imu_s, PWR_MGMT0, pwr_state);
@@ -129,23 +147,24 @@ void iim_imu_disable_accelerometer(iim_imu_t *imu_s)
 	}
 }
 
-void iim_imu_enable_gyroscope(iim_imu_t *imu_s, char gyroMode)
+void iim_imu_enable_gyroscope(iim_imu_t *imu_s)
 {
 	uint8_t pwr_state;
 	iim_imu_read_register(imu_s, PWR_MGMT0, 1, &pwr_state);
 	if ( !BITVALUE(pwr_state, 3) && !BITVALUE(pwr_state, 2) )
 	{
-		switch(gyroMode)
+		switch(*imu_s->gyro_mode)
 		{
-			case 'STB':
+
+			case LN:	// LN
 			{
-				pwr_state |= GYRO_STB;
+				pwr_state |= GYRO_LN;
 				iim_imu_write_register(imu_s, PWR_MGMT0, pwr_state);
 			} break;
 
-			case 'LN':
+			case STB:	// STB
 			{
-				pwr_state |= GYRO_LN;
+				pwr_state |= GYRO_STB;
 				iim_imu_write_register(imu_s, PWR_MGMT0, pwr_state);
 			} break;
 
@@ -197,54 +216,91 @@ void iim_imu_set_accel_config(iim_imu_t *imu_s, uint8_t value)
 	iim_imu_write_register(imu_s, ACCEL_CONFIG0, value);
 }
 
-/*
-void IIM_readAccData()
+void iim_imu_read_acceleration(iim_imu_t *imu_s)
 {
-	uint8_t rx_buff[6];
-	uint16_t tmp;
+	uint8_t rx_buff[6] = {0};
+	uint16_t tmp1;
+	uint16_t tmp2;
+	uint16_t tmp3;
 
-	uint8_t addr = 0x80 | ACCEL_DATA_X1_UI;
-	iim_imu_Activate();
-	HAL_SPI_Transmit(imu_s->configState->spi_h, &addr, 1, 1000);
-	HAL_SPI_Receive(imu_s->configState->spi_h, rx_buff, 6, 1000);
+	// read _temperature register values - 2 bytes
+	iim_imu_read_register(imu_s, ACCEL_DATA_X1_UI, 1, rx_buff);
+	iim_imu_read_register(imu_s, ACCEL_DATA_X0_UI, 1, &rx_buff[1]);
+	iim_imu_read_register(imu_s, ACCEL_DATA_Y1_UI, 1, &rx_buff[2]);
+	iim_imu_read_register(imu_s, ACCEL_DATA_Y0_UI, 1, &rx_buff[3]);
+	iim_imu_read_register(imu_s, ACCEL_DATA_Z1_UI, 1, &rx_buff[4]);
+	iim_imu_read_register(imu_s, ACCEL_DATA_Z0_UI, 1, &rx_buff[5]);
 
-    tmp = rx_buff[0];
-    tmp <<= 8;
-    tmp |= rx_buff[1];
+	// X - axis
+	tmp1 = rx_buff[0];
+	tmp1 <<= 8;
+	tmp1 |= rx_buff[1];
 
-    accelRaw.x = (int16_t)tmp;
+	// Y - axis
+	tmp2 = rx_buff[2];
+	tmp2 <<= 8;
+	tmp2 |= rx_buff[3];
 
-    tmp = rx_buff[2];
-    tmp <<= 8;
-    tmp |= rx_buff[3];
+	// Z - axis
+	tmp3 = rx_buff[4];
+	tmp3 <<= 8;
+	tmp3 |= rx_buff[5];
 
-    accelRaw.y = (int16_t)tmp;
+	imu_s->accel_raw->x_axis = (int16_t)tmp1;
+	imu_s->accel_raw->y_axis = (int16_t)tmp2;
+	imu_s->accel_raw->z_axis = (int16_t)tmp3;
 
-    tmp = rx_buff[4];
-    tmp <<= 8;
-    tmp |= rx_buff[5];
-
-    accelRaw.z = (int16_t)tmp;
-}
-*/
-
-/*
-void iim_convert_accel(iim_scaled_data *output, iim_raw_data input)
-{
-    output->x = ((float)input.x * 16.0) / 32768.0;
-    output->y = ((float)input.y * 16.0) / 32768.0;
-    output->z = ((float)input.z * 16.0) / 32768.0;
 }
 
-void iim_convert_gyro(iim_scaled_data *output, iim_raw_data input)
+void iim_imu_convert_acceleration(iim_imu_t *imu_s)
 {
-    output->x = ((float)input.x * 2000.0) / 32768.0;
-    output->y = ((float)input.y * 2000.0) / 32768.0;
-    output->z = ((float)input.z * 2000.0) / 32768.0;
+	imu_s->accel_data->x_axis = ((float)imu_s->accel_raw->x_axis * 16.0) / 32768.0;
+	imu_s->accel_data->y_axis = ((float)imu_s->accel_raw->y_axis * 16.0) / 32768.0;
+	imu_s->accel_data->z_axis = ((float)imu_s->accel_raw->z_axis * 16.0) / 32768.0;
 }
-*/
-//void config_setup()
 
+void iim_imu_read_gyro(iim_imu_t *imu_s)
+{
+	uint8_t rx_buff[6] = {0};
+	uint16_t tmp1;
+	uint16_t tmp2;
+	uint16_t tmp3;
+
+	// read _temperature register values - 2 bytes
+	iim_imu_read_register(imu_s, GYRO_DATA_X1_UI, 1, rx_buff);
+	iim_imu_read_register(imu_s, GYRO_DATA_X0_UI, 1, &rx_buff[1]);
+	iim_imu_read_register(imu_s, GYRO_DATA_Y1_UI, 1, &rx_buff[2]);
+	iim_imu_read_register(imu_s, GYRO_DATA_Y0_UI, 1, &rx_buff[3]);
+	iim_imu_read_register(imu_s, GYRO_DATA_Z1_UI, 1, &rx_buff[4]);
+	iim_imu_read_register(imu_s, GYRO_DATA_Z0_UI, 1, &rx_buff[5]);
+
+	// X - axis
+	tmp1 = rx_buff[0];
+	tmp1 <<= 8;
+	tmp1 |= rx_buff[1];
+
+	// Y - axis
+	tmp2 = rx_buff[2];
+	tmp2 <<= 8;
+	tmp2 |= rx_buff[3];
+
+	// Z - axis
+	tmp3 = rx_buff[4];
+	tmp3 <<= 8;
+	tmp3 |= rx_buff[5];
+
+	imu_s->gyro_raw->x_axis = (int16_t)tmp1;
+	imu_s->gyro_raw->y_axis = (int16_t)tmp2;
+	imu_s->gyro_raw->z_axis = (int16_t)tmp3;
+
+}
+
+void iim_imu_convert_gyro(iim_imu_t *imu_s)
+{
+	imu_s->gyro_data->x_axis = ((float)imu_s->gyro_raw->x_axis * 2000.0) / 32768.0;
+	imu_s->gyro_data->y_axis = ((float)imu_s->gyro_raw->y_axis * 2000.0) / 32768.0;
+	imu_s->gyro_data->z_axis = ((float)imu_s->gyro_raw->z_axis * 2000.0) / 32768.0;
+}
 
 /*
 void IIM_init_SPI(SPI_HandleTypeDef *spi_handler)
@@ -276,40 +332,6 @@ void IIM_readAccel_SPI(iim_raw_data *data)
 
     temp = (tmp[4] << 8) | tmp[5];
     data->z = (int16_t)temp;
-}
-
-void IIM_readGyro_SPI(iim_raw_data *data)
-{
-    uint8_t tmp[6];
-    uint16_t temp;
-    uint8_t reg_adr = 0x80 | GYRO_DATA_X1_UI;
-    HAL_GPIO_WritePin(GPIOC, Chip_select_Pin, GPIO_PIN_REset);
-    HAL_SPI_Transmit(status.spi_h, &reg_adr, 1, 100);
-    HAL_SPI_Receive(status.spi_h, tmp, 6, 100);
-    HAL_GPIO_WritePin(GPIOC, Chip_select_Pin, GPIO_PIN_set);
-
-    temp = (tmp[0] << 8 | tmp[1]);
-    data->x = (int16_t)temp;
-
-    temp = (tmp[2] << 8 | tmp[3]);
-    data->y = (int16_t)temp;
-
-    temp = (tmp[4] << 8 | tmp[5]);
-    data->z = (int16_t)temp;
-}
-
-void IIM_convertAccel_SPI(iim_scaled_data *output, iim_raw_data input)
-{
-    output->x = ((float)input.x * 16.0) / 32768.0;
-    output->y = ((float)input.y * 16.0) / 32768.0;
-    output->z = ((float)input.z * 16.0) / 32768.0;
-}
-
-void IIM_convertGyro_SPI(iim_scaled_data *output, iim_raw_data input)
-{
-    output->x = ((float)input.x * 2000.0) / 32768.0;
-    output->y = ((float)input.y * 2000.0) / 32768.0;
-    output->z = ((float)input.z * 2000.0) / 32768.0;
 }
 
 void IIM_configAccel_SPI(uint8_t fs, uint8_t odr)
