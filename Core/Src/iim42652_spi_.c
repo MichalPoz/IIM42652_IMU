@@ -17,18 +17,25 @@
 #include "stm32f4xx_hal.h"
 #include "stdio.h"
 
-#define BITVALUE(X, N) ( ( (X) >> (N) ) & 0x1 )
+static iim_imu_config_t imu_config_s;
+static iim_imu_sensor_mode_t accel_sensor_mode;
+static iim_imu_sensor_mode_t gyro_sensor_mode;
+static iim_data_raw_t accel_raw;
+static iim_data_raw_t gyro_raw;
+static iim_data_t accel_data;
+static iim_data_t gyro_data;
+
 
 void iim_imu_init(iim_imu_t *imu_s, SPI_HandleTypeDef *spi_handler)
 {
 	// Creating secondary structures - need to check
-	static iim_imu_config_t imu_config_s;
-	static iim_imu_sensor_mode_t accel_sensor_mode;
-	static iim_imu_sensor_mode_t gyro_sensor_mode;
-	static iim_data_raw_t accel_raw;
-	static iim_data_raw_t gyro_raw;
-	static iim_data_t	accel_data;
-	static iim_data_t gyro_data;
+	//iim_imu_config_t imu_config_s;
+	//iim_imu_sensor_mode_t accel_sensor_mode;
+	//iim_imu_sensor_mode_t gyro_sensor_mode;
+	//iim_data_raw_t accel_raw;
+	//iim_data_raw_t gyro_raw;
+	//iim_data_t	accel_data;
+	//iim_data_t gyro_data;
 
 	// Assigning addresses of SPI handler and structures
 	imu_s->config_state = &imu_config_s;
@@ -153,7 +160,7 @@ void iim_imu_enable_gyroscope(iim_imu_t *imu_s)
 	iim_imu_read_register(imu_s, PWR_MGMT0, 1, &pwr_state);
 	if ( !BITVALUE(pwr_state, 3) && !BITVALUE(pwr_state, 2) )
 	{
-		switch(*imu_s->gyro_mode)
+		switch(*(imu_s->gyro_mode))
 		{
 
 			case LN:	// LN
@@ -302,61 +309,4 @@ void iim_imu_convert_gyro(iim_imu_t *imu_s)
 	imu_s->gyro_data->z_axis = ((float)imu_s->gyro_raw->z_axis * 2000.0) / 32768.0;
 }
 
-/*
-void IIM_init_SPI(SPI_HandleTypeDef *spi_handler)
-{
-    status.spi_h = spi_handler;
-    status.gyro_fs = set_GYRO_FS_SEL_2000_dps;
-    status.gyro_odr = set_GYRO_ODR_1kHz;
-    status.acc_fs = set_ACCEL_FS_SEL_16g;
-    status.acc_odr = set_ACCEL_ODR_1kHz;
-    HAL_GPIO_WritePin(GPIOC, Chip_select_Pin, GPIO_PIN_set);	// CS pin should be default high
-}
-
-
-void IIM_readAccel_SPI(iim_raw_data *data)
-{
-    uint8_t tmp[6];
-    uint16_t temp;
-    uint8_t reg_adr = 0x80 | ACCEL_DATA_X1_UI;
-    HAL_GPIO_WritePin(GPIOC, Chip_select_Pin, GPIO_PIN_REset);
-    HAL_SPI_Transmit(status.spi_h, &reg_adr, 1, 100);
-    HAL_SPI_Receive(status.spi_h, tmp, 6, 100);
-    HAL_GPIO_WritePin(GPIOC, Chip_select_Pin, GPIO_PIN_set);
-
-    temp = (tmp[0] << 8) | tmp[1];
-    data->x = (int16_t)temp;
-
-    temp = (tmp[2] << 8) | tmp[3];
-    data->y = (int16_t)temp;
-
-    temp = (tmp[4] << 8) | tmp[5];
-    data->z = (int16_t)temp;
-}
-
-void IIM_configAccel_SPI(uint8_t fs, uint8_t odr)
-{
-    status.acc_fs = fs;
-    status.acc_odr = odr;
-    uint8_t tmp;
-    tmp = fs << 5;
-    tmp |= odr;
-    uint8_t reg_adr = 0x00 | GYRO_DATA_X1_UI;
-    //HAL_I2C_Mem_Write(status.i2c_h, IIM_ADR, ACCEL_CONFIG0, 1, &tmp, 1, 10);
-    HAL_GPIO_WritePin(GPIOC, Chip_select_Pin, GPIO_PIN_REset);
-    HAL_SPI_Transmit(status.spi_h, pData, Size, Timeout)
-    HAL_SPI_Transmit(status.spi_h, &ACCEL_CONFIG0, 1, 10);
-    HAL_GPIO_WritePin(GPIOC, Chip_select_Pin, GPIO_PIN_set);
-}
-
-void IIM_configGyro_SPI(uint8_t fs, uint8_t odr)
-{
-    status.gyro_fs = fs;
-    status.gyro_odr = odr;
-    uint8_t tmp;
-    tmp = fs << 5;
-    tmp |= odr;
-    //HAL_I2C_Mem_Write(status.i2c_h, IIM_ADR, GYRO_CONFIG0, 1, &tmp, 1, 10);
-}
-*/
 #endif

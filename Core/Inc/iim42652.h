@@ -20,6 +20,12 @@
 #define ACC_LN		0b00000011
 #define PWR_DEFAULT 0b00000000
 
+/**
+ * Macro to obtain Nth value of bit from X sequence
+ *
+ */
+#define BITVALUE(X, N) ( ( (X) >> (N) ) & 0x1 )
+
 typedef enum {
 	LP,	// only for accel
 	LN,	// for accel and gyro
@@ -39,7 +45,7 @@ typedef struct iim_config_s
 	uint8_t gyro_ui_filt_bw;
 	uint8_t gyro_ui_filt_ord;
 	uint8_t gyro_dec2_m2_ord;
-	iim_imu_sensor_mode_t *sensor_mode;
+
 } iim_imu_config_t;
 
 typedef struct iim_imu_data_raw_s
@@ -56,6 +62,7 @@ typedef struct iim_imu_data_s
 	float z_axis;
 } iim_data_t;
 
+
 typedef struct iim_imu_s
 {
 	iim_imu_config_t *config_state;
@@ -65,17 +72,40 @@ typedef struct iim_imu_s
 	iim_data_raw_t *gyro_raw;
 	iim_data_t *accel_data;
 	iim_data_t *gyro_data;
+
+
 } iim_imu_t;
 
 
 void iim_imu_init(iim_imu_t *imu_s, SPI_HandleTypeDef *spi_handler);
 
+/**
+ * Function to bring the chip select down - active state
+ * */
 void iim_imu_activate();
 
+/**
+ * Function to set the chip select high - inactive state
+ *
+ */
 void iim_imu_deactivate();
 
+/**
+ * Function to test device ID.
+ *
+ * @param imu_s - pointer to iim_imu_t struct
+ * @param dev_id - pointer to variable, returning device ID
+ */
 void iim_imu_who_test(iim_imu_t *imu_s, uint8_t *dev_id);
 
+/**
+ * Function to read register value using SPI interface
+ *
+ * @param imu_s - pointer to iim_imu_t struct
+ * @param reg - the number of register which value we want to read
+ * @param bytes - number of bytes to read
+ * @param data_out - pointer to variable, returning readed value of register
+ */
 void iim_imu_read_register(iim_imu_t *imu_s, uint8_t reg, uint8_t bytes, uint8_t *data_out);
 
 void iim_imu_write_register(iim_imu_t *imu_s, uint8_t reg, uint8_t data_in);
